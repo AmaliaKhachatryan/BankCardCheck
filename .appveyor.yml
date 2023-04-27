@@ -1,0 +1,24 @@
+image: Ubuntu  # образ для сборки
+
+stack: jdk 11  # версия JDK
+
+branches:
+  only:
+    - main  # ветка git
+
+build: off  # будем использовать свой скрипт сборки
+
+install:
+  - java -jar artifacts/app-ibank-build-for-testers.jar  &
+# запускаем SUT (& означает, что в фоновом режиме не блокируем терминал для запуска тестов)
+
+
+build_script:
+  - chmod +x gradlew
+  - ./gradlew test --info -Dselenide.headless=true
+
+
+
+
+
+
