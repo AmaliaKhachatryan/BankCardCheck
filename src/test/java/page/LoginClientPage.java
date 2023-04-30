@@ -1,8 +1,8 @@
-package pageobjects;
+package page;
 
 import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.SelenideElement;
-import dataclient.ClientInfo;
+import data.ClientInfo;
 
 import java.time.Duration;
 

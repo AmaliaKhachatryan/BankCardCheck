@@ -1,27 +1,22 @@
-package pageobjects;
+package page;
 
-import com.codeborne.selenide.ElementsCollection;
+import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.SelenideElement;
+import data.ClientInfo;
 import lombok.val;
+
+import java.time.Duration;
 
 import static com.codeborne.selenide.Selectors.byText;
 import static com.codeborne.selenide.Selenide.$;
-import static com.codeborne.selenide.Selenide.$$;
 
 public class ClientCardsPage {
-    private ElementsCollection cards = $$(".list__item div");
     private final String balanceStart = "баланс: ";
     private final String balanceFinish = " р.";
     private final SelenideElement headerClientCars = $(byText("Ваши карты"));
-    private final ElementsCollection buttonsDeposit = $$("button[data-test-id='action-deposit']");
 
-    public int getFirstCardBalance() {
-        String text = cards.first().text();
-        return extractBalance(text);
-    }
-
-    public int getSecondCardBalance() {
-        String text = cards.last().text();
+    public int getCardBalance(ClientInfo.ClientCards card) {
+        String text = $("[data-test-id='" + card.getTestId() + "']").getText();
         return extractBalance(text);
     }
 
@@ -33,15 +28,11 @@ public class ClientCardsPage {
     }
 
     public ClientCardsPage() {
+        headerClientCars.shouldBe(Condition.visible, Duration.ofSeconds(10));
     }
 
-    public DashboardPage replenishFistCard() {
-        buttonsDeposit.get(0).click();
-        return new DashboardPage();
-    }
-
-    public DashboardPage replenishSecondCard() {
-        buttonsDeposit.get(1).click();
+    public DashboardPage buttonReplenishCard(ClientInfo.ClientCards card) {
+        $("[data-test-id='" + card.getTestId() + "'] button").click();
         return new DashboardPage();
     }
 }
