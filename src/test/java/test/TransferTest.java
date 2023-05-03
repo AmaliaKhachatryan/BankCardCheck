@@ -2,31 +2,64 @@ package test;
 
 import com.codeborne.selenide.Configuration;
 import data.ClientInfo;
+import data.DataHelper;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import page.ClientCardsPage;
 import page.DashboardPage;
 import page.LoginClientPage;
 
 import static com.codeborne.selenide.Selenide.*;
 import static data.ClientInfo.*;
-import static test.DataHelper.*;
 
 
 public class TransferTest {
-    static ClientInfo.LoginInfo clientAuto = getLoginInfo();
-    static ClientInfo.VerificationCode code = getVerificationCode(clientAuto);
-    static LoginClientPage loginClientPage;
-    static DashboardPage dashboardPage;
+    ClientInfo.LoginInfo clientAuto = getLoginInfo();
+    ClientInfo.VerificationCode code = getVerificationCode(clientAuto);
+    LoginClientPage loginClientPage;
+    DashboardPage dashboardPage;
+    DataHelper dataHelper = new DataHelper();
+    static ClientCardsPage clientCardsPage;
+    static int actualBalanceFirstCard;
+    static int actualBalanceSecondCard;
+    static int startBalanceFirstCard;
+    static int startBalanceSecondCard;
+    static int expectedBalanceFirstCard;
+    static int expectedBalanceSecondCard;
+    static int transferAmountInt;
 
-    public static void authorizationClient() {
+    public static void getStartBalancesCards(ClientInfo.ClientCards first, ClientInfo.ClientCards second) {
+        startBalanceFirstCard = clientCardsPage.getCardBalance(first);
+        startBalanceSecondCard = clientCardsPage.getCardBalance(second);
+    }
+
+    public static void getExpectedBalancesFirstCardPlusAmount() {
+        expectedBalanceFirstCard = startBalanceFirstCard + transferAmountInt;
+    }
+
+    public static void getExpectedBalancesSecondCardMinusAmount() {
+        expectedBalanceSecondCard = startBalanceSecondCard - transferAmountInt;
+    }
+
+    public static void getActualBalancesCards(ClientInfo.ClientCards first, ClientInfo.ClientCards second) {
+        actualBalanceFirstCard = clientCardsPage.getCardBalance(first);
+        actualBalanceSecondCard = clientCardsPage.getCardBalance(second);
+    }
+
+    public static void assertBalancesCards() {
+        Assertions.assertEquals(expectedBalanceFirstCard, actualBalanceFirstCard);
+        Assertions.assertEquals(expectedBalanceSecondCard, actualBalanceSecondCard);
+    }
+
+    public void authorizationClient() {
         open("http://localhost:9999");
         loginClientPage.clientLogin(clientAuto)
                 .passVerification(code);
     }
 
-    public static void makeATransferAmountToFrom(ClientCards toCard, ClientCards fromCard) {
+    public void makeATransferAmountToFrom(ClientCards toCard, ClientCards fromCard) {
         clientCardsPage.buttonReplenishCard(toCard)
                 .makeATransfer(transferAmountInt, fromCard.getNumberCard());
     }
@@ -38,6 +71,7 @@ public class TransferTest {
         loginClientPage = new LoginClientPage();
         loginClientPage.clientLogin(clientAuto)
                 .passVerification(code);
+        clientCardsPage = new ClientCardsPage();
         getStartBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
         if (startBalanceFirstCard == 0) {
             transferAmountInt = startBalanceSecondCard / 2;
@@ -56,12 +90,13 @@ public class TransferTest {
             makeATransferAmountToFrom(secondCard(clientAuto), firstCard(clientAuto));
         }
         authorizationClient();
-        getStartBalancesCardWithPrint(firstCard(clientAuto), secondCard(clientAuto));
     }
     @Test
     public void transferValidAmountFromSecondCardToFirst() {
-        getTransferAmount(startBalanceSecondCard);
-        getExpectedBalancesCardToFirstFromSecond();
+        getStartBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
+        transferAmountInt = dataHelper.getTransferAmount(startBalanceSecondCard);
+        getExpectedBalancesFirstCardPlusAmount();
+        getExpectedBalancesSecondCardMinusAmount();
         makeATransferAmountToFrom(firstCard(clientAuto), secondCard(clientAuto));
         getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
         assertBalancesCards();
@@ -69,7 +104,8 @@ public class TransferTest {
 
     @Test
     public void transferFromSecondCardWhitIncorrectCardNumber() {
-        getTransferAmount(startBalanceSecondCard);
+        getStartBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
+        transferAmountInt = dataHelper.getTransferAmount(startBalanceSecondCard);
         clientCardsPage.buttonReplenishCard(firstCard(clientAuto))
                 .makeATransfer(transferAmountInt, RandomStringUtils.randomNumeric(16));
         dashboardPage = new DashboardPage();
@@ -77,6 +113,7 @@ public class TransferTest {
     }
     @Test
     public void transferNullValueFromSecondCardToFirst() {
+        getStartBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
         clientCardsPage.buttonReplenishCard(firstCard(clientAuto))
                 .makeATransferWithoutAmount(secondCard(clientAuto).getNumberCard());
         getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
@@ -86,8 +123,10 @@ public class TransferTest {
 
     @Test
     public void transferZeroValueSecondCardToFirst() {
-        getTransferAmount(0);
-        getExpectedBalancesCardToFirstFromSecond();
+        getStartBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
+        transferAmountInt = dataHelper.getTransferAmount(0);
+        getExpectedBalancesFirstCardPlusAmount();
+        getExpectedBalancesSecondCardMinusAmount();
         makeATransferAmountToFrom(firstCard(clientAuto), secondCard(clientAuto));
         getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
         assertBalancesCards();
@@ -95,17 +134,18 @@ public class TransferTest {
 
     @Test
     public void transferTotalAmountFromSecondCardToFirst() {
+        getStartBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
         transferAmountInt = startBalanceSecondCard;
-        System.out.println(transferAmountInt);
-        getExpectedBalancesCardToFirstFromSecond();
+        getExpectedBalancesFirstCardPlusAmount();
+        getExpectedBalancesSecondCardMinusAmount();
         makeATransferAmountToFrom(firstCard(clientAuto), secondCard(clientAuto));
         getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
         assertBalancesCards();
     }
     @Test
     public void checkErrorMessageWhenTransferAmountExceedsBalanceSecondCard() {
+        getStartBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
         transferAmountInt = (int) ((startBalanceFirstCard + 1) + Math.random() * 99);
-        System.out.println(transferAmountInt);
         makeATransferAmountToFrom(firstCard(clientAuto), secondCard(clientAuto));
         dashboardPage = new DashboardPage();
         dashboardPage.shouldBeErrorMessage();
@@ -113,8 +153,8 @@ public class TransferTest {
 
     @Test
     public void checkBalanceWhenTransferAmountExceedsBalanceSecondCard() {
+        getStartBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
         transferAmountInt = (int) ((startBalanceFirstCard + 1) + Math.random() * 99);
-        System.out.println(transferAmountInt);
         makeATransferAmountToFrom(firstCard(clientAuto), secondCard(clientAuto));
         getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
         Assertions.assertEquals(startBalanceFirstCard, actualBalanceFirstCard);
@@ -123,11 +163,12 @@ public class TransferTest {
 
     @Test
     public void checkErrorMessageWhenTransferFromSecondCardHaveZeroValueBalance() {
+        getStartBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
         transferAmountInt = startBalanceSecondCard;
-        System.out.println("Сумма первого перевода: " + transferAmountInt);
         makeATransferAmountToFrom(firstCard(clientAuto), secondCard(clientAuto));
-        getExpectedBalancesCardToFirstFromSecond();
-        getTransferAmount(1000);
+        getExpectedBalancesFirstCardPlusAmount();
+        getExpectedBalancesSecondCardMinusAmount();
+        transferAmountInt = dataHelper.getTransferAmount(1000);
         authorizationClient();
         makeATransferAmountToFrom(firstCard(clientAuto), secondCard(clientAuto));
         dashboardPage = new DashboardPage();
@@ -136,12 +177,13 @@ public class TransferTest {
 
     @Test
     public void checkBalanceWhenTransferFromSecondCardHaveZeroValueBalance() {
+        getStartBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
         transferAmountInt = startBalanceSecondCard;
-        System.out.println("Сумма первого перевода: " + transferAmountInt);
-        getExpectedBalancesCardToFirstFromSecond();
+        getExpectedBalancesFirstCardPlusAmount();
+        getExpectedBalancesSecondCardMinusAmount();
         makeATransferAmountToFrom(firstCard(clientAuto), secondCard(clientAuto));
         authorizationClient();
-        getTransferAmount(1000);
+        transferAmountInt = dataHelper.getTransferAmount(1000);
         makeATransferAmountToFrom(firstCard(clientAuto), secondCard(clientAuto));
         getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
         assertBalancesCards();
@@ -149,11 +191,10 @@ public class TransferTest {
 
     @Test
     public void transferFractionalAmountFromSecondCardToFirstTest() {
-        getTransferDoubleAmount(99.99);
+        getStartBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
+        var transferAmountDouble = dataHelper.getTransferDoubleAmount(99.99);
         expectedBalanceFirstCard = (int) (startBalanceFirstCard + transferAmountDouble);
         expectedBalanceSecondCard = (int) (startBalanceSecondCard - transferAmountDouble);
-        System.out.println("Ожидаемый баланс первой карты: " + expectedBalanceFirstCard);
-        System.out.println("Ожидаемый баланс второй карты: " + expectedBalanceSecondCard);
         clientCardsPage.buttonReplenishCard(firstCard(clientAuto))
                 .makeATransferDoubleAmount(transferAmountDouble, secondCard(clientAuto).getNumberCard());
         getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
@@ -162,16 +203,19 @@ public class TransferTest {
 
     @Test
     public void transferValidAmountToSecondCardFromFirst() {
-        getTransferAmount(startBalanceSecondCard);
-        getExpectedBalancesCardToSecondFromFirst();
+        getStartBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
+        transferAmountInt = dataHelper.getTransferAmount(startBalanceSecondCard);
+        getExpectedBalancesFirstCardPlusAmount();
+        getExpectedBalancesSecondCardMinusAmount();
         makeATransferAmountToFrom(secondCard(clientAuto), firstCard(clientAuto));
-        getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
+        getActualBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
         assertBalancesCards();
     }
 
     @Test
     public void transferFromFirstCardWhitIncorrectCardNumber() {
-        getTransferAmount(startBalanceSecondCard);
+        getStartBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
+        transferAmountInt = dataHelper.getTransferAmount(startBalanceSecondCard);
         clientCardsPage.buttonReplenishCard(secondCard(clientAuto))
                 .makeATransfer(transferAmountInt, RandomStringUtils.randomNumeric(16));
         dashboardPage = new DashboardPage();
@@ -180,36 +224,40 @@ public class TransferTest {
 
     @Test
     public void transferNullValueFromFirstCardToSecond() {
+        getStartBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
         clientCardsPage.buttonReplenishCard(secondCard(clientAuto))
                 .makeATransferWithoutAmount(firstCard(clientAuto).getNumberCard());
-        getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
+        getActualBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
         Assertions.assertEquals(startBalanceFirstCard, actualBalanceFirstCard);
         Assertions.assertEquals(startBalanceSecondCard, actualBalanceSecondCard);
     }
 
     @Test
     public void transferZeroValueFromFirstCardToSecond() {
-        getTransferAmount(0);
-        getExpectedBalancesCardToSecondFromFirst();
+        getStartBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
+        transferAmountInt = dataHelper.getTransferAmount(0);
+        getExpectedBalancesFirstCardPlusAmount();
+        getExpectedBalancesSecondCardMinusAmount();
         makeATransferAmountToFrom(secondCard(clientAuto), firstCard(clientAuto));
-        getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
+        getActualBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
         assertBalancesCards();
     }
 
     @Test
     public void transferTotalAmountToSecondFromFirstCard() {
+        getStartBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
         transferAmountInt = startBalanceSecondCard;
-        System.out.println(transferAmountInt);
-        getExpectedBalancesCardToSecondFromFirst();
+        getExpectedBalancesFirstCardPlusAmount();
+        getExpectedBalancesSecondCardMinusAmount();
         makeATransferAmountToFrom(secondCard(clientAuto), firstCard(clientAuto));
-        getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
+        getActualBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
         assertBalancesCards();
     }
 
     @Test
     public void checkErrorMessageWhenTransferAmountExceedsBalanceFirstCard() {
+        getStartBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
         transferAmountInt = (int) ((startBalanceFirstCard + 1) + Math.random() * 99);
-        System.out.println(transferAmountInt);
         makeATransferAmountToFrom(secondCard(clientAuto), firstCard(clientAuto));
         dashboardPage = new DashboardPage();
         dashboardPage.shouldBeErrorMessage();
@@ -217,21 +265,22 @@ public class TransferTest {
 
     @Test
     public void checkBalanceWhenTransferAmountExceedsBalanceFirstCard() {
+        getStartBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
         transferAmountInt = (int) ((startBalanceFirstCard + 1) + Math.random() * 99);
-        System.out.println(transferAmountInt);
         makeATransferAmountToFrom(secondCard(clientAuto), firstCard(clientAuto));
-        getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
+        getActualBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
         Assertions.assertEquals(startBalanceFirstCard, actualBalanceFirstCard);
         Assertions.assertEquals(startBalanceSecondCard, actualBalanceSecondCard);
     }
 
     @Test//
     public void checkErrorMessageWhenTransferFromFirstCardHaveZeroValueBalance() {
+        getStartBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
         transferAmountInt = startBalanceFirstCard;
-        System.out.println("Сумма первого перевода: " + transferAmountInt);
         makeATransferAmountToFrom(secondCard(clientAuto), firstCard(clientAuto));
-        getExpectedBalancesCardToSecondFromFirst();
-        getTransferAmount(1000);
+        getExpectedBalancesFirstCardPlusAmount();
+        getExpectedBalancesSecondCardMinusAmount();
+        transferAmountInt = dataHelper.getTransferAmount(1000);
         authorizationClient();
         makeATransferAmountToFrom(secondCard(clientAuto), firstCard(clientAuto));
         dashboardPage = new DashboardPage();
@@ -240,27 +289,27 @@ public class TransferTest {
 
     @Test
     public void checkBalanceWhenTransferFromFirstCardHaveZeroValueBalance() {
+        getStartBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
         transferAmountInt = startBalanceFirstCard;
-        System.out.println("Сумма первого перевода: " + transferAmountInt);
-        getExpectedBalancesCardToSecondFromFirst();
+        getExpectedBalancesFirstCardPlusAmount();
+        getExpectedBalancesSecondCardMinusAmount();
         makeATransferAmountToFrom(secondCard(clientAuto), firstCard(clientAuto));
         authorizationClient();
-        getTransferAmount(1000);
+        transferAmountInt = dataHelper.getTransferAmount(1000);
         makeATransferAmountToFrom(secondCard(clientAuto), firstCard(clientAuto));
-        getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
+        getActualBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
         assertBalancesCards();
     }
 
     @Test
     public void transferFractionalAmountFromFirstCardToSecondTest() {
-        getTransferDoubleAmount(99.99);
+        getStartBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
+        var transferAmountDouble = dataHelper.getTransferDoubleAmount(99.99);
         expectedBalanceFirstCard = (int) (startBalanceFirstCard - transferAmountDouble);
         expectedBalanceSecondCard = (int) (startBalanceSecondCard + transferAmountDouble);
-        System.out.println("Ожидаемый баланс первой карты: " + expectedBalanceFirstCard);
-        System.out.println("Ожидаемый баланс второй карты: " + expectedBalanceSecondCard);
         clientCardsPage.buttonReplenishCard(secondCard(clientAuto))
                 .makeATransferDoubleAmount(transferAmountDouble, firstCard(clientAuto).getNumberCard());
-        getActualBalancesCards(firstCard(clientAuto), secondCard(clientAuto));
+        getActualBalancesCards(secondCard(clientAuto), firstCard(clientAuto));
         assertBalancesCards();
     }
 }
