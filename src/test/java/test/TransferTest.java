@@ -21,34 +21,34 @@ public class TransferTest {
     LoginClientPage loginClientPage;
     DashboardPage dashboardPage;
     DataHelper dataHelper = new DataHelper();
-    static ClientCardsPage clientCardsPage;
-    static int actualBalanceFirstCard;
-    static int actualBalanceSecondCard;
-    static int startBalanceFirstCard;
-    static int startBalanceSecondCard;
-    static int expectedBalanceFirstCard;
-    static int expectedBalanceSecondCard;
-    static int transferAmountInt;
+    ClientCardsPage clientCardsPage;
+    int actualBalanceFirstCard;
+    int actualBalanceSecondCard;
+    int startBalanceFirstCard;
+    int startBalanceSecondCard;
+    int expectedBalanceFirstCard;
+    int expectedBalanceSecondCard;
+    int transferAmountInt;
 
-    public static void getStartBalancesCards(ClientInfo.ClientCards first, ClientInfo.ClientCards second) {
+    public void getStartBalancesCards(ClientInfo.ClientCards first, ClientInfo.ClientCards second) {
         startBalanceFirstCard = clientCardsPage.getCardBalance(first);
         startBalanceSecondCard = clientCardsPage.getCardBalance(second);
     }
 
-    public static void getExpectedBalancesFirstCardPlusAmount() {
+    public void getExpectedBalancesFirstCardPlusAmount() {
         expectedBalanceFirstCard = startBalanceFirstCard + transferAmountInt;
     }
 
-    public static void getExpectedBalancesSecondCardMinusAmount() {
+    public void getExpectedBalancesSecondCardMinusAmount() {
         expectedBalanceSecondCard = startBalanceSecondCard - transferAmountInt;
     }
 
-    public static void getActualBalancesCards(ClientInfo.ClientCards first, ClientInfo.ClientCards second) {
+    public void getActualBalancesCards(ClientInfo.ClientCards first, ClientInfo.ClientCards second) {
         actualBalanceFirstCard = clientCardsPage.getCardBalance(first);
         actualBalanceSecondCard = clientCardsPage.getCardBalance(second);
     }
 
-    public static void assertBalancesCards() {
+    public void assertBalancesCards() {
         Assertions.assertEquals(expectedBalanceFirstCard, actualBalanceFirstCard);
         Assertions.assertEquals(expectedBalanceSecondCard, actualBalanceSecondCard);
     }
